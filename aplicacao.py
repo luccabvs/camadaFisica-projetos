@@ -10,11 +10,13 @@
 #para acompanhar a execução e identificar erros, construa prints ao longo do código! 
 
 
+from typing import final
 from enlace import *
 import time
 import numpy as np
 import PIL.Image as Image
 import io
+from datetime import date, datetime
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -42,7 +44,7 @@ def main():
         #seus dados a serem transmitidos são uma lista de bytes a serem transmitidos. Gere esta lista com o 
         #nome de txBuffer. Esla sempre irá armazenar os dados a serem enviados.
         
-        with open('teste.jpeg', 'rb') as file:
+        with open('seaOfThieves.jpeg', 'rb') as file:
             txBuffer = file.read()
         
         print(len(txBuffer))
@@ -56,9 +58,9 @@ def main():
         print('Transmição iniciando!')
         #tente entender como o método send funciona!
         #Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
-          
-        com1.sendData(np.asarray(txBuffer))
         
+        initTime = datetime.now()
+        com1.sendData(np.asarray(txBuffer))
 
         # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
         # Tente entender como esse método funciona e o que ele retorna
@@ -73,11 +75,14 @@ def main():
         #acesso aos bytes recebidos
         txLen = len(txBuffer)
         rxBuffer, nRx = com1.getData(txLen)
-        print("recebeu {}" .format(rxBuffer))
+        #print("recebeu {}" .format(rxBuffer))
         
         image = Image.open(io.BytesIO(rxBuffer))
-        image.save('teste_copia.jpg')
-    
+        image.save('seaOfThieves_copia.jpg')
+        finalTime = datetime.now()
+        deltaTime = finalTime - initTime
+        print('Tempo de execução {:.2f} segundos'.format(float(str(deltaTime).split(':')[-1])))
+
         # Encerra comunicação
         print("-------------------------")
         print("Comunicação encerrada")
