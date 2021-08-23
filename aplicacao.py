@@ -13,6 +13,8 @@
 from enlace import *
 import time
 import numpy as np
+import PIL.Image as Image
+import io
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -20,16 +22,16 @@ import numpy as np
 # se estiver usando windows, o gerenciador de dispositivos informa a porta
 
 #use uma das 3 opcoes para atribuir à variável a porta usada
-#serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
+serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM3"                  # Windows(variacao de)
+#serialName = "COM3"                  # Windows(variacao de)
 
 
 def main():
     try:
         #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
         #para declarar esse objeto é o nome da porta.
-        com1 = enlace('COM3')
+        com1 = enlace('/dev/ttyACM0')
         
     
         # Ativa comunicacao. Inicia os threads e a comunicação seiral 
@@ -40,7 +42,7 @@ def main():
         #seus dados a serem transmitidos são uma lista de bytes a serem transmitidos. Gere esta lista com o 
         #nome de txBuffer. Esla sempre irá armazenar os dados a serem enviados.
         
-        with open('cerveja.jpg', 'rb') as file:
+        with open('teste.jpeg', 'rb') as file:
             txBuffer = file.read()
         
         print(len(txBuffer))
@@ -57,6 +59,7 @@ def main():
           
         com1.sendData(np.asarray(txBuffer))
         
+
         # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
         # Tente entender como esse método funciona e o que ele retorna
         txSize = com1.tx.getStatus()
@@ -71,7 +74,9 @@ def main():
         txLen = len(txBuffer)
         rxBuffer, nRx = com1.getData(txLen)
         print("recebeu {}" .format(rxBuffer))
-            
+        
+        image = Image.open(io.BytesIO(rxBuffer))
+        image.save('teste_copia.jpg')
     
         # Encerra comunicação
         print("-------------------------")
