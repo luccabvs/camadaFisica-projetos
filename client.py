@@ -1,6 +1,6 @@
 import random
 from datetime import datetime
-import enlace
+from enlace import *
 import numpy as np
 
 def main():
@@ -21,12 +21,15 @@ def main():
             listBytes.append(random.choice(commandList))
 
         com1.sendData(np.array(listBytes))
-
+        print(np.array(listBytes))
         print('deu bom')
+        com1.disable()
+
     except Exception as erro:     
-       print('F')
-       print(erro) 
-       
+        print('F')
+        print(erro) 
+        com1.disable()
+   
 
 
 if __name__ == "__main__":
