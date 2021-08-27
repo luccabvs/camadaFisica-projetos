@@ -1,20 +1,24 @@
 from numpy.lib.shape_base import expand_dims
 from enlace import *
 
-serialName = 'COM4'
+serialName = 'COM5'
 
 def main():
     try:
-        com1 = enlace('COM4')
+        com1 = enlace('COM5')
         com1.enable()
 
+        listResult = []
+        
 
         while True:
             txLen = com1.rx.getBufferLen()
             rxBuffer, nRx = com1.getData(txLen)
             if len(rxBuffer) > 0:
                 print(rxBuffer)
+                listResult.append(rxBuffer)
                 break
+            
         com1.disable()
 
     except Exception as erro:
