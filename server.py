@@ -1,24 +1,32 @@
 from numpy.lib.shape_base import expand_dims
 from enlace import *
-
-serialName = 'COM5'
+import time
+serialName = 'COM4'
 
 def main():
     try:
-        com1 = enlace('COM5')
+        com1 = enlace('COM4')
         com1.enable()
-
+        com1.rx.clearBuffer()
         listResult = []
-        
 
+        rxBuffer, nRx = com1.getData(1)
+        com1.rx.clearBuffer()
         while True:
-            txLen = com1.rx.getBufferLen()
-            rxBuffer, nRx = com1.getData(txLen)
-            if len(rxBuffer) > 0:
-                print(rxBuffer)
+            rxBuffer, nRx = com1.getData(1)
+            if rxBuffer == b'\xBB':
+                break   
+            elif rxBuffer == b'\xAA':
+                rxBuffer, nRx = com1.getData(2)
                 listResult.append(rxBuffer)
-                break
-            
+            else:
+                listResult.append(rxBuffer)
+
+        print(listResult)
+        print(len(listResult))
+
+        com1.sendData(bytes([len(listResult)]))
+
         com1.disable()
 
     except Exception as erro:
