@@ -23,22 +23,42 @@ with open('tupa_fc.png', 'rb') as file:
     listBytes_to_Array = b"".join(listBytes)
     return listBytes_to_Array, listBytesWithoutFlags'''
 
-def create_datagram(type, payload=b"\xAA" b"\xAA" b"\xAA", id=int(1).to_bytes(4, byteorder= 'big'), size=b"\x03", total=int(1).to_bytes(4, byteorder= 'big')):
+def create_datagram(type, id_sense, id_server, n_total, n_pacote, payload):
     datagram = b''
-    #head
-    if type == 'data':
-        datagram += b"\x00"
-    elif type == 'handshake':
-        datagram += b"\x01"
 
-    datagram += id
-    datagram += total
-    datagram += size
+    #head
+    #h0
+    datagram += type
+
+    #h1
+    datagram += id_sense
+
+    #h2
+    datagram += id_server
+
+    #h3
+    datagram += n_total
+
+    #h4
+    datagram += n_pacote
+
+    #h5
+    '''if type == 3:
+        datagram += id do arquivo
+    else:
+        datagram += len do payload'''
+
+    #h6
+    '''solicitar reenvio'''
+
+    #h7
+    '''salve pra falar que recebeu o último tudo certo'''
+
 
     #payload
     datagram += payload
 
-    datagram += b"\xBB" b"\xBB" b"\xBB" b"\xBB"
+    datagram += b"\xFF" b"\xAA" b"\xFF" b"\xAA"
     return datagram
 
 #print(np.asarray(create_datagram("handshake")))
