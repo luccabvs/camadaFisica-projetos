@@ -6,139 +6,166 @@ import sys
 import PIL.Image as Image
 import io
 from PIL import ImageFile
-
+import traceback
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+from datetime import datetime
 
 serialName = '/dev/ttyACM0'
-
-'''def main():
-    try:
-        com1 = enlace('COM4')
-        com1.enable()
-        com1.rx.clearBuffer()
-        listResult = []
-
-        rxBuffer, nRx = com1.getData(1)
-        com1.rx.clearBuffer()
-        while True:
-            rxBuffer, nRx = com1.getData(1)
-            if rxBuffer == b'\xBB':
-                break   
-            elif rxBuffer == b'\xAA':
-                rxBuffer, nRx = com1.getData(2)
-                listResult.append(rxBuffer)
-            else:
-                listResult.append(rxBuffer)
-
-        print(listResult)
-        print(len(listResult))
-
-        com1.sendData(bytes([len(listResult)]))
-
-        com1.disable()
-
-    except Exception as erro:
-        print("ops! :-\\")
-        print(erro)
-        com1.disable()'''
-
-def send_ok(com1):
-    com1.sendData(np.asarray([b'\xAA\xAA\xAA']))
 
 def send_fail(com1):
     com1.sendData(np.asarray([b'\xFF\xFF\xFF']))
 
-def handle_package(com1):
-    received_id = com1.getData(4)
-    total = com1.getData(4)
-    size = com1.getData(1)
-
-    payload = com1.getData(int.from_bytes(size[0], byteorder='big'))
-    eop = com1.getData(4)
-
-    if eop[0] == b'\xBB\xBB\xBB\xBB':
-        pass    
+def receive_type1(com1):
+    head = com1.getData(9)[0]
+    payload = com1.getData(4)[0]
+    eop = com1.getData(4)[0]
+    if eop == b'\xff\xaa\xff\xaa' and head[1].to_bytes(1, byteorder='big') == b'\xcc':
+        return "OK", head[2], len(head)+len(payload)+len(eop)
     else:
-        send_fail(com1)
-        return 
-    
-    if int.from_bytes(received_id[0], byteorder='big') == int.from_bytes(total[0], byteorder='big')-1:
-        return [payload[0], received_id, "over"]
-    return [payload[0], received_id]
+        return "ERROR", head[2], len(head)+len(payload)+len(eop)
 
+def receive_type3(com1):
+    head = com1.getData(9)[0]
+    payload = com1.getData(head[4])[0]
+    eop = com1.getData(4)[0]
+
+    if eop == b'\xFF\xAA\xFF\xAA' and head[1].to_bytes(1, byteorder='big') == b'\xCC':
+        return "OK", head[3], payload, len(head)+len(payload)+len(eop)
+    else:
+        return "ERROR", head[3], payload, len(head)+len(payload)+len(eop)
+ 
+
+def send_type2(com1):
+    com1.sendData(np.asarray([b'\x02\x00\xCC\x00\x00\x00\x00\x00\x00\x00\xBB\xBB\xBB\xBB\xFF\xAA\xFF\xAA']))
+
+def send_type4(com1, last_id):
+    msg = b'\x04\x00\xCC\x00\x00\x00' + last_id.to_bytes(1, byteorder= 'big') + b'\x00\x00\x00\xBB\xBB\xBB\xBB\xFF\xAA\xFF\xAA'
+    com1.sendData(np.asarray([msg]))
+
+def send_type5(com1):
+    com1.sendData(np.asarray([b'\x05\x00\xCC\x00\x00\x00\x00\x00\x00\x00\xBB\xBB\xBB\xBB\xFF\xAA\xFF\xAA']))
+
+def send_type6(com1, last_id):
+    msg = b'\x06\x00\xCC\x00\x00\x00' + last_id.to_bytes(1, byteorder= 'big') + b'\x00\x00\x00\xBB\xBB\xBB\xBB\xFF\xAA\xFF\xAA'
+    com1.sendData(np.asarray([msg]))
 
 def main():
-    try:
+    try:     
         com1 = enlace(serialName)
         com1.enable()
         com1.rx.fisica.flush()
         com1.rx.clearBuffer()
-
-        #handshake
-        transfer_type = com1.getData(1)
-        if transfer_type[0] == b'\x01':
-            handle_package(com1)
-            send_ok(com1)
-
-        package = []
-        print('------------------')
-        print('Hanshake completo!')
-        print('------------------')
         
-        check_id = 0
+        numPckg = 0
+        ocioso = True
+        
+        timer1 = time.time()
+        while ocioso: 
+            if time.time()-timer1 < 20:
+                #print('Servidor ocioso...')
+          
+                transfer_type = com1.getDataClient(1)
+                if transfer_type[0][0] == b'\x01':
+                    inicio, numPckg, tamPckg  = receive_type1(com1)
+                    with open("Server5.txt", "a") as file:
+                        msg = str(datetime.now()) + ' / ' + 'receb / ' + str(int.from_bytes(transfer_type[0][0], byteorder='big')) + ' / ' + str(tamPckg+1)
+                        file.write(msg)   
+                        file.write("\n")
 
-        print('Iniciando transmissão!')
-        print('----------------------')
+                    if inicio == "OK":
+                        ocioso = False
+                    time.sleep(1)
+            else:
+                ocioso = False
+        
+        if ocioso == False:
+            data = b''
+            send_type2(com1)
+            with open("Server5.txt", "a") as file:
+                msg = str(datetime.now()) + ' / ' + 'envio / ' + str(2) + ' / ' + str(18)
+                file.write(msg)   
+                file.write("\n")
+            cont = 1
+            recebimento = True
+            while recebimento:
+                if cont <= numPckg:
+                    timer1 = time.time()
+                    timer2 = time.time()
+                    transfer_type = com1.getData(1)
+                    tentativa_recebimento = True
+                    while tentativa_recebimento:
+                        if transfer_type[0] == b'\x03':
+                            inicio, idPack, payload, tamPckg  = receive_type3(com1)
+                            with open("Server5.txt", "a") as file:
+                                msg = str(datetime.now()) + ' / ' + 'receb / ' + str(int.from_bytes(transfer_type[0], byteorder='big')) + ' / ' + str(tamPckg+1) + ' / ' + str(idPack) + ' / ' + str(numPckg)
+                                file.write(msg)  
+                                file.write("\n") 
+                            if inicio == 'OK':
+                                if idPack == cont:
+                                    send_type4(com1, cont)
+                                    with open("Server5.txt", "a") as file:
+                                        msg = str(datetime.now()) + ' / ' + 'envio / ' + str(4) + ' / ' + str(18)
+                                        file.write(msg)   
+                                        file.write("\n")
+                                    cont += 1
+                                    data += payload
+                                    #print('PACOTE {} RECEBIDO'.format(idPack))
+                                else:
+                                    send_type6(com1, idPack)
+                                    #print('MANDOU TIPO 6')
+                                    with open("Server5.txt", "a") as file:
+                                        msg = str(datetime.now()) + ' / ' + 'envio / ' + str(6) + ' / ' + str(18)
+                                        file.write(msg)   
+                                        file.write("\n")
+                            else:
+                                send_type6(com1, idPack)
+                                #print('MANDOU TIPO 6')
+                                with open("Server5.txt", "a") as file:
+                                    msg = str(datetime.now()) + ' / ' + 'envio / ' + str(6) + ' / ' + str(18)
+                                    file.write(msg)   
+                                    file.write("\n")
 
-        while True:
-            com1.rx.clearBuffer()
-            transfer_type = com1.getData(1)
-            
-            payload = ''
-            id_received = ''
-            over = ''
+                            tentativa_recebimento = False
+                            continue
+                        else:
+                            com1.rx.clearBuffer()
+                            time.sleep(1)
+                            if time.time()-timer2 > 20:
+                                ocioso = True
+                                send_type5(com1)
+                                with open("Server5.txt", "a") as file:
+                                    msg = str(datetime.now()) + ' / ' + 'envio / ' + str(5) + ' / ' + str(18)
+                                    file.write(msg) 
+                                    file.write("\n")
 
-            if transfer_type[0] == b'\x00':
-                handle_package_content = handle_package(com1)
-                payload = handle_package_content[0]
-                id_received = int.from_bytes(handle_package_content[1][0], byteorder='big')
-                try:
-                    over = handle_package_content[2]
-                except:
-                    pass
-                if id_received == check_id:
-                    package.append(payload)
-                    send_ok(com1)
-                    print('Pacote número {} recebido!'.format(id_received+1))
-                    print('--------------------------')
-                    check_id += 1
+                                recebimento = False
+                                tentativa_recebimento = False
+                                continue
+                            else:
+                                if time.time()-timer1 > 2:
+                                    send_type6(com1, cont)
+                                    with open("Server5.txt", "a") as file:
+                                        msg = str(datetime.now()) + ' / ' + 'envio / ' + str(6) + ' / ' + str(18)
+                                        file.write(msg)
+                                        file.write("\n")
+
+                                    timer1 = time.time()
+                                    transfer_type = com1.getData(1)
 
                 else:
-                    send_fail(com1)
-                    print('Houve um erro. Pacote número {} recebido! O pacote correto era o número {}'.format(id_received+1, check_id))
-                    print('---------------------------------------------------------------------------')                
-
-
-            if over == 'over':
-                break
-        
-        print('Transmissão Finalizada!')
-        print('------------------------')
-        time.sleep(2)
-        print('Número total de pacotes recebidos: {}'.format(len(package)))
-        print('-------------------------------------')
-
-        image = Image.open(io.BytesIO(np.asarray(package)))
-        image.save('imagemRecebida.jpg')    
-        
+                    recebimento = False
+        try:   
+            image = Image.open(io.BytesIO(np.asarray(data)))
+            image.save('imagemRecebida.jpg')    
+        except:
+            pass
         com1.disable()
 
     except Exception as e:
         print("ops! :-\\")
         print(e)
+        print(traceback.format_exc())
         com1.disable()
-
-
 
 if __name__ == "__main__":
     main()
