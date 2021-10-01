@@ -23,7 +23,7 @@ with open('tupa_fc.png', 'rb') as file:
     listBytes_to_Array = b"".join(listBytes)
     return listBytes_to_Array, listBytesWithoutFlags'''
 
-def create_datagram(type, id_sense, id_server, n_total, n_pacote, payload):
+def create_datagram(type, id_server, n_total, n_pacote, n_reenvio, ultimo_pacote_recebido, payload):
     datagram = b''
 
     #head
@@ -31,7 +31,8 @@ def create_datagram(type, id_sense, id_server, n_total, n_pacote, payload):
     datagram += type
 
     #h1
-    datagram += id_sense
+    id_sensor = b"\x00"
+    datagram += id_sensor
 
     #h2
     datagram += id_server
@@ -43,17 +44,23 @@ def create_datagram(type, id_sense, id_server, n_total, n_pacote, payload):
     datagram += n_pacote
 
     #h5
-    '''if type == 3:
-        datagram += id do arquivo
+    if type != 3:
+        id_arquivo = b"\x00"
+        datagram += id_arquivo
     else:
-        datagram += len do payload'''
+        datagram += len(payload)
 
     #h6
-    '''solicitar reenvio'''
+    datagram += n_reenvio
 
     #h7
-    '''salve pra falar que recebeu o último tudo certo'''
+    datagram += ultimo_pacote_recebido
 
+    #h8
+    datagram += b"\x00"
+
+    #h9
+    datagram += b"\x00"
 
     #payload
     datagram += payload
@@ -61,39 +68,16 @@ def create_datagram(type, id_sense, id_server, n_total, n_pacote, payload):
     datagram += b"\xFF" b"\xAA" b"\xFF" b"\xAA"
     return datagram
 
+def tipo1(n_total, payload):
+    return create_datagram(b"\x01", b"\CC", n_total, b"x\00", b"\x00", b"\x00", payload)
+
+def tipo3(n_total, n_pacote, payload):
+    return create_datagram(b"\x03", b"\CC", n_total, n_pacote, b"\x00", b"\x00", payload)
+
+def tipo5(n_total, payload):
+    return create_datagram(b"\x05", b"\CC", n_total, b"x\00", b"\x00", b"\x00", payload)
+
 #print(np.asarray(create_datagram("handshake")))
-
-'''def main():
-    try:
-        com1 = enlace("/dev/ttyACM0")
-
-        com1.enable()
-
-        id = 1
-
-        while 
-
-        #txBuffer, listBytesWithoutFlags = generate_commandList()
-
-        time.sleep(1)
-
-        com1.sendData(np.asarray(txBuffer))
-        print(f'Tamanho da lista enviada: {len(listBytesWithoutFlags)}')
-
-        while True:
-            lenght = com1.getData(1)
-            if len(lenght) > 0:
-                received = int.from_bytes(lenght[0], byteorder='big')
-                print('Tamanho da lista recebida: {}'.format(received))
-                break
-
-        com1.disable()
-
-
-    except Exception as erro:     
-        print("F")
-        print(erro) 
-        com1.disable()'''
 
 def main():
     try:
@@ -154,11 +138,8 @@ def main():
                                     break
                                 else:
                                     print('Houve um erro ao receber o pacote')
-
-                elif lenght[0] == True:
-                    continue
-
                 else:
+                    print('SEM TEMPO IRMÃO, CORTANDO RELAÇÕES')
                     break
 
         com1.disable()               
