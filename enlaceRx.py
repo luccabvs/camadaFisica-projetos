@@ -73,17 +73,18 @@ class RX(object):
             end = time.time()
             time.sleep(0.05) 
             if end - begin > 5:
-                return False
+                return (False)                 
         return(self.getBuffer(size))
 
     def getNDataClient(self, size):
         begin = time.time()
+        timer2 = time.time()
         while(self.getBufferLen() < size):
             end = time.time()
             time.sleep(0.05) 
             if end - begin > 5:
-                return False
-        return(self.getBuffer(size))
+                return (False, timer2)
+        return(self.getBuffer(size), timer2)
 
 
     def clearBuffer(self):
