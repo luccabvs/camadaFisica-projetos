@@ -132,7 +132,7 @@ def main():
                         print('Pacote {} recebido'.format(bytes))
                     elif lenght[0] == b"\x06":
                         com1.getDataClient(5)
-                        pacote_errado = com1.getDataClient(5)
+                        pacote_errado = com1.getDataClient(1)
                         print('Houve um erro ao receber o pacote {}'.format(int.from_bytes(pacote_errado, byteorder='big')))
                         print('---------')
                         print('Enviando novamente o pacote que teve erro')
