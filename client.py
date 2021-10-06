@@ -6,6 +6,7 @@ from numpy.core.fromnumeric import size
 from enlace import *
 import numpy as np
 import traceback
+from crccheck.crc import Crc16
 
 with open('tupa_fc.png', 'rb') as file:
     img = file.read()
@@ -25,7 +26,7 @@ with open('tupa_fc.png', 'rb') as file:
     listBytes_to_Array = b"".join(listBytes)
     return listBytes_to_Array, listBytesWithoutFlags'''
 
-def create_datagram(type, id_server, n_total, n_pacote, n_reenvio, ultimo_pacote_recebido, payload):
+def create_datagram(type, id_server, n_total, n_pacote, n_reenvio, ultimo_pacote_recebido, payload, crc):
     datagram = b''
 
     #head
@@ -33,7 +34,7 @@ def create_datagram(type, id_server, n_total, n_pacote, n_reenvio, ultimo_pacote
     datagram += type
 
     #h1
-    id_sensor = b"\x00"
+    id_sensor = b"\x00" 
     datagram += id_sensor
 
     #h2
@@ -59,29 +60,30 @@ def create_datagram(type, id_server, n_total, n_pacote, n_reenvio, ultimo_pacote
     #h7
     datagram += ultimo_pacote_recebido
 
-    #h8
-    datagram += b"\x00"
-
-    #h9
-    datagram += b"\x00"
-
+    #h8 h9
+    if type != b"\x03":
+        datagram += crc
+    else:
+        datagram += crc
+        
     #payload
     datagram += payload
 
     datagram += b"\xFF" b"\xAA" b"\xFF" b"\xAA"
+
     return datagram
 
 def tipo1(n_total, payload):
-    return create_datagram(b"\x01", b"\xCC", n_total, b"\x00", b"\x00", b"\x00", payload)
+    return create_datagram(b"\x01", b"\xCC", n_total, b"\x00", b"\x00", b"\x00", payload, b"\x00"b"\x00")
 
-def tipo3(n_total, n_pacote, payload):
-    return create_datagram(b"\x03", b"\xCC", n_total, n_pacote, b"\x00", b"\x00", payload)
+def tipo3(n_total, n_pacote, payload, crc):
+    return create_datagram(b"\x03", b"\xCC", n_total, n_pacote, b"\x00", b"\x00", payload, crc)
 
-def tipo3_erro(n_total, n_pacote, payload):
-    return create_datagram(b"\x03", b"\xCC", n_total, b"\x0A", b"\x00", b"\x00", payload)
+def tipo3_erro(n_total, n_pacote, payload, crc):
+    return create_datagram(b"\x03", b"\xCC", n_total, b"\x0C", b"\x00", b"\x00", payload, crc)
 
 def tipo5(n_total, payload):
-    return create_datagram(b"\x05", b"\xCC", n_total, b"\x00", b"\x00", b"\x00", payload)
+    return create_datagram(b"\x05", b"\xCC", n_total, b"\x00", b"\x00", b"\x00", payload, b"\x00"b"\x00")
 
 def main():
     try:
@@ -144,10 +146,11 @@ def main():
             for bytes in range(ceil(len(img)/114)):
                 time.sleep(1)
                 payload = img[bytes*114: (bytes+1)*114]
-                txBuffer = tipo3(ceil(len(img)/114).to_bytes(1, byteorder= 'big'), cont.to_bytes(1, byteorder= 'big') , payload)
+                crc = Crc16.calc(payload).to_bytes(2, byteorder= 'big')
+                txBuffer = tipo3(ceil(len(img)/114).to_bytes(1, byteorder= 'big'), cont.to_bytes(1, byteorder= 'big') , payload, crc)
                 com1.sendData(np.asarray(txBuffer))
                 with open ("Client5.txt", "a") as file:
-                    msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '3' + ' / '  + str(len(payload) + 14) + ' / ' + str(cont) + ' / ' + str(ceil(len(img)/114))
+                    msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '3' + ' / '  + str(len(payload) + 14) + ' / ' + str(cont) + ' / ' + str(ceil(len(img)/114)) + ' / ' + str(crc)
                     file.write(msg)
                     file.write('\n')
                 print('---------------')
@@ -175,10 +178,10 @@ def main():
                         print('Enviando novamente o pacote que teve erro')
                         while True:
                             time.sleep(1)
-                            txBuffer = tipo3(ceil(len(img)/114).to_bytes(1, byteorder= 'big'), cont.to_bytes(1, byteorder= 'big') , payload)
+                            txBuffer = tipo3(ceil(len(img)/114).to_bytes(1, byteorder= 'big'), cont.to_bytes(1, byteorder= 'big') , payload, crc)
                             com1.sendData(np.asarray(txBuffer))
                             with open ("Client5.txt", "a") as file:
-                                msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '3' + ' / '  + str(len(payload) + 14) + ' / ' + str(cont) + ' / ' + str(ceil(len(img)/114))
+                                msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '3' + ' / '  + str(len(payload) + 14) + ' / ' + str(cont) + ' / ' + str(ceil(len(img)/114)) + ' / ' + str(crc)
                                 file.write(msg)
                                 file.write('\n')
                             print('---------------')
@@ -200,14 +203,14 @@ def main():
                             else:
                                 print('Enviando novamente o pacote que deu erro')
                     else:
-                        print("NAO RECEBI A CONFIRMACAO DO ZECA")
+                        print("Confirmação do servidor não foi recebida")
                 else:
                     finaliza = True
                     while (time.time()-timer2) < 20:
-                        txBuffer = tipo3(ceil(len(img)/114).to_bytes(1, byteorder= 'big'), cont.to_bytes(1, byteorder= 'big') , payload)
+                        txBuffer = tipo3(ceil(len(img)/114).to_bytes(1, byteorder= 'big'), cont.to_bytes(1, byteorder= 'big') , payload, crc)
                         com1.sendData(np.asarray(txBuffer))
                         with open ("Client5.txt", "a") as file:
-                            msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '3' + ' / '  + str(len(payload) + 14) + ' / ' + str(cont) + ' / ' + str(ceil(len(img)/114))
+                            msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '3' + ' / '  + str(len(payload) + 14) + ' / ' + str(cont) + ' / ' + str(ceil(len(img)/114)) + ' / ' + str(crc)
                             file.write(msg)
                             file.write('\n')
                         print('Pacote {} enviado novamente'.format(cont))
@@ -241,7 +244,7 @@ def main():
                             msg = str(datetime.now()) + ' / ' + 'envio' + ' / ' + '5' + ' / '  + '18'
                             file.write(msg)
                             file.write('\n')
-                        print('SEM TEMPO IRMÃO, CORTANDO RELAÇÕES')
+                        print('Sem resposta do servidor')
                         break
         print("Comunicação encerrada")
         com1.disable()               
