@@ -47,6 +47,6 @@ class enlace(object):
 
     def getDataClient(self, size):
         data = self.rx.getNDataClient(size)
-        if type(data) == bool:
+        if type(data[0]) == bool:
             return(data, 0)
         return(data, len(data))
