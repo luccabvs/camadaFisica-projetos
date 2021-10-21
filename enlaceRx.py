@@ -73,26 +73,18 @@ class RX(object):
             end = time.time()
             time.sleep(0.05) 
             if end - begin > 5:
-                again = input('Servidor inativo. Tentar novamente? S/N ')
-                if again == 'S':
-                    return True
-                elif again == 'N':
-                    return False
-        print(self.getBuffer(size))
+                return (False)                 
         return(self.getBuffer(size))
 
     def getNDataClient(self, size):
         begin = time.time()
+        timer2 = time.time()
         while(self.getBufferLen() < size):
             end = time.time()
             time.sleep(0.05) 
             if end - begin > 5:
-                again = input('Servidor inativo. Tentar novamente? S/N ')
-                if again == 'S':
-                    return True
-                elif again == 'N':
-                    return False
-        return(self.getBuffer(size))
+                return (False, timer2)
+        return(self.getBuffer(size), timer2)
 
 
     def clearBuffer(self):
