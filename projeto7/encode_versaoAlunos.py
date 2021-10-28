@@ -70,9 +70,6 @@ def main():
             x += signal.generateSin(freq, A, duration, fs)[0]
             y += signal.generateSin(freq, A, duration, fs)[1]
         
-        '''plt.figure()
-        plt.plot(x, y)
-        plt.xlim(0, 0.01)'''
         return (x, y)
 
     #obtenha o vetor tempo tb.
@@ -92,8 +89,23 @@ def main():
     print("Gerando Tom referente ao símbolo : {}".format(NUM))
     
     #construa o sunal a ser reproduzido. nao se esqueca de que é a soma das senoides
-    tone = generateDTMF(NUM)
+    x, tone = generateDTMF(NUM)
+    print(len(tone))
     #printe o grafico no tempo do sinal a ser reproduzido
+    plt.figure()
+    plt.plot(x, tone)
+    plt.xlim(0, 0.01)
+
+    X, Y = signal.calcFFT(tone,fs)
+    plt.figure()
+    plt.stem(X,np.abs(Y))
+    plt.xlim(0, 2000)
+
+    index = peakutils.indexes(np.abs(Y), thres=0.8, min_dist=20)
+    print("index de picos {}" .format(index))
+    for freq in X[index]:
+        print("freq de pico sao {}" .format(freq))
+
     # reproduz o som
     sd.play(tone, fs)
     # Exibe gráficos
