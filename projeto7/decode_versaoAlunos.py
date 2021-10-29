@@ -120,13 +120,15 @@ def main():
         print("freq de pico sao {}" .format(freq))
 
     #printe os picos encontrados! 
-    print(freq_to_num(freqs))
 
-    frequencias = freq_to_num(freqs)
+    if len(freqs) == 2:
+        frequencias = freq_to_num(freqs)
+        for key in signalDict:
+            if signalDict[key] == frequencias:
+                print('A tecla pressionada foi {}'.format(key))
 
-    for key in signalDict:
-        if signalDict[key] == frequencias:
-            print('A tecla pressionada foi {}'.format(key))
+    else:
+        print('O som não foi captado corretamente')
 
     #encontre na tabela duas frequencias proximas às frequencias de pico encontradas e descubra qual foi a tecla
     #print a tecla.
